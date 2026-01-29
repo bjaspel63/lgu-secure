@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Barangay Records (Printable Certificate)</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- QR Code Library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <!-- Ed25519 Sign/Verify -->
+  <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl.min.js"></script>
+</head>
+
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="topbar">
+      <div>
+        <h1>🏛️ Barangay Records</h1>
+        <p class="sub">Offline: chained ledger + signatures + printable certificate + corrections/revoke + daily summary.</p>
+      </div>
+
+      <div class="userbox">
+        <span class="userbadge" id="userBadge">Not logged in</span>
+
+        <button class="ghost" id="loginBtn" type="button">Login</button>
+        <button class="ghost" id="logoutBtn" type="button" style="display:none">Logout</button>
+
+        <button class="ghost" id="changePassBtn" type="button" style="display:none">Change Password</button>
+
+        <button class="secondary" id="addUserBtn" type="button" style="display:none">+ Add User</button>
+        <button class="ghost" id="resetUserBtn" type="button" style="display:none">Reset User Password</button>
+
+        <button class="secondary" id="unlockSignBtn" type="button" style="display:none">🔓 Unlock Signing</button>
+        <button class="ghost" id="lockSignBtn" type="button" style="display:none">🔒 Lock Signing</button>
+      </div>
+    </div>
+
+    <div class="hint">
+      ✅ Works offline after first load (LocalStorage).<br/>
+      🔐 Only ADMIN can unlock signing. STAFF can Issue/Correct/Revoke only while unlocked.<br/>
+      🖨️ Printing: Certificate and Daily Summary print as clean A4 pages.
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- ISSUE -->
+    <section class="card">
+      <h2>📝 Issue Document <span class="pill">Staff / Admin</span></h2>
+
+      <div class="row">
+        <div>
+          <label>Resident Full Name</label>
+          <input id="name" placeholder="e.g., Juan Dela Cruz" />
+        </div>
+        <div>
+          <label>Document Type</label>
+          <select id="doctype">
+            <option value="Barangay Clearance">Barangay Clearance</option>
+            <option value="Certificate of Residency">Certificate of Residency</option>
+            <option value="Certificate of Indigency">Certificate of Indigency</option>
+            <option value="Business Clearance">Business Clearance</option>
+            <option value="Incident Report">Incident Report</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Purpose / Notes</label>
+      <textarea id="purpose" placeholder="e.g., Employment requirement, scholarship, etc."></textarea>
+
+      <div class="btns">
+        <button id="issueBtn">Issue & Add to Ledger</button>
+        <button class="ghost" id="resetBtn" type="button">Clear Form</button>
+      </div>
+
+      <div class="status" id="issueStatus">Ready.</div>
+    </section>
+
+    <!-- VERIFY + TOOLS -->
+    <section class="card">
+      <h2>✅ Verify Document <span class="pill">Public Verifier</span></h2>
+
+      <label>Paste Verify Code (from QR / certificate)</label>
+      <input id="verifyInput" placeholder="e.g., BRGY|<id>|<hash>" />
+
+      <div class="btns">
+        <button id="verifyBtn">Verify</button>
+        <button class="ghost" id="tamperBtn" type="button">⚠️ Demo: Tamper Last Record</button>
+      </div>
+
+      <div class="status" id="verifyStatus">Paste a code and click Verify.</div>
+
+      <hr class="divider"/>
+
+      <h2 style="margin-top:0">📦 Ledger Tools <span class="pill">Admin Only</span></h2>
+
+      <div class="btns">
+        <button class="secondary" id="exportBtn" type="button">Export Ledger JSON</button>
+        <button class="ghost" id="importBtn" type="button">Import Ledger JSON</button>
+        <button class="ghost" id="clearLedgerBtn" type="button">Clear Ledger</button>
+      </div>
+
+      <input id="filePick" type="file" accept=".json" style="display:none"/>
+
+      <div class="hint">
+        🔎 Integrity = hash + prevHash. Authenticity (new records) = digital signatures.
+      </div>
+    </section>
+
+  </div>
+
+  <!-- LEDGER TABLE -->
+  <section class="card" style="margin-top:16px;">
+    <h2>📚 Ledger Records <span class="pill">Audit View</span></h2>
+    <div class="small">Click a row to preview its certificate and select it for Correction/Revoke.</div>
+
+    <div class="btns" style="margin-top:10px;">
+      <button class="ghost" id="checkChainBtn" type="button">Run Chain Integrity Check</button>
+    </div>
+    <div class="status" id="chainStatus">Ledger loaded.</div>
+
+    <div style="overflow:auto;">
+      <table id="ledgerTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Record ID</th>
+            <th>Name</th>
+            <th>Document</th>
+            <th>Hash</th>
+            <th>Prev Hash</th>
+            <th>Integrity</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ACTIONS: CORRECT / REVOKE -->
+  <section class="card" style="margin-top:16px;">
+    <h2>✍️ Corrections / Revoke <span class="pill">Append-only</span></h2>
+
+    <div class="row">
+      <div>
+        <label>Selected Record ID</label>
+        <input id="selectedId" class="mono" placeholder="Click a row in the ledger table…" readonly />
+        <div class="small">Only ISSUE records can be corrected or revoked.</div>
+      </div>
+      <div>
+        <label>Note (Correction details / Revocation reason)</label>
+        <textarea id="actionNote" placeholder="e.g., Corrected spelling of name / Document revoked due to…"></textarea>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="secondary" id="correctBtn" type="button">Add CORRECTION (Append)</button>
+      <button id="revokeBtn" type="button">Add REVOKE (Append)</button>
+      <button class="ghost" id="clearSelectBtn" type="button">Clear Selection</button>
+    </div>
+
+    <div class="status" id="actionStatus">Select a record first.</div>
+  </section>
+
+  <!-- DAILY SIGNED SUMMARY -->
+  <section class="card" style="margin-top:16px;">
+    <h2>🗓️ Daily Signed Summary <span class="pill">Admin</span></h2>
+
+    <div class="btns">
+      <button class="secondary" id="genSummaryBtn" type="button">Generate Today’s Summary</button>
+      <button class="ghost" id="exportSummaryBtn" type="button" disabled>Export Summary JSON</button>
+      <button class="ghost" id="printSummaryBtn" type="button" disabled>Print Summary</button>
+    </div>
+
+    <div class="status" id="summaryStatus">Admin can generate a signed daily summary (requires signing unlocked).</div>
+  </section>
+
+  <!-- PRINTABLE A4 CERTIFICATE -->
+  <section class="card" id="printArea">
+    <h2>🖨️ Printable Certificate (A4) <span class="pill">Preview</span></h2>
+
+    <div class="btns" style="margin-top:10px;">
+      <button id="printBtn" class="secondary" type="button">Print Certificate</button>
+      <button id="hideCertBtn" class="ghost" type="button">Hide Certificate</button>
+    </div>
+
+    <div class="hint">
+      Printing tip: Choose <b>More settings → Paper size: A4</b>. Turn off “Headers and footers” for clean output.
+    </div>
+
+    <div class="a4" id="a4Doc">
+      <div class="watermark">BARANGAY</div>
+
+      <div class="certHeader">
+        <div class="certLeft">
+          <h3>Republic of the Philippines</h3>
+          <div class="meta">
+            Province/City: <span class="fill" id="phCity">Sample City</span><br/>
+            Barangay: <span class="fill" id="phBarangay">Barangay Sample</span><br/>
+            Office of the Punong Barangay
+          </div>
+        </div>
+        <div class="certRight">
+          <div><b>Date Issued:</b> <span id="pIssuedDate"></span></div>
+          <div><b>Record ID:</b> <span class="mono" id="pRecordId"></span></div>
+        </div>
+      </div>
+
+      <div class="certTitle" id="pDocTitle">Barangay Clearance</div>
+
+      <div class="certBody">
+        <p>
+          This is to certify that <span class="fill" id="pName">________________</span>
+          is a bonafide resident of <span class="fill" id="pBarangay2">Barangay Sample</span>.
+        </p>
+
+        <div class="fieldLine">
+          <b>Purpose / Notes:</b>
+          <span class="fill" id="pPurpose">________________</span>
+        </div>
+
+        <p>
+          Issued this <span class="fill" id="pIssuedPretty">__________</span> upon request of the above-named individual,
+          for whatever legal purpose it may serve.
+        </p>
+
+        <div class="verifyStrip">
+          <b>Verification Code (scan QR or copy):</b><br/>
+          <span class="mono" id="pVerifyCode"></span>
+        </div>
+      </div>
+
+      <div class="certFooter">
+        <div>
+          <div class="signBox">
+            <div><div class="sig">Barangay Secretary (Signature over Printed Name)</div></div>
+            <div><div class="sig">Punong Barangay (Signature over Printed Name)</div></div>
+          </div>
+
+          <div class="small" style="margin-top:10px;">
+            Hash: <span class="mono" id="pHash"></span><br/>
+            Prev Hash: <span class="mono" id="pPrevHash"></span>
+          </div>
+        </div>
+
+        <div class="qrBox">
+          <div id="printQR"></div>
+          <div class="small"><b>Scan to Verify</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRINTABLE DAILY SUMMARY -->
+  <section class="card" id="summaryArea" style="display:none; margin-top:16px;">
+    <h2>🖨️ Daily Summary (A4) <span class="pill">Preview</span></h2>
+    <div class="a4" id="a4Summary">
+      <div class="watermark">SUMMARY</div>
+
+      <div class="certHeader">
+        <div class="certLeft">
+          <h3>Daily Ledger Summary</h3>
+          <div class="meta">
+            Province/ural: <span class="fill" id="sCity">Sample City</span><br/>
+            Barangay: <span class="fill" id="sBarangay">Barangay Sample</span><br/>
+          </div>
+        </div>
+        <div class="certRight">
+          <div><b>Date:</b> <span id="sDate"></span></div>
+          <div><b>Generated:</b> <span id="sGeneratedAt"></span></div>
+        </div>
+      </div>
+
+      <div class="certBody">
+        <div class="fieldLine"><b>Total records:</b> <span class="fill" id="sTotal"></span></div>
+        <div class="fieldLine"><b>Issued today:</b> <span class="fill" id="sIssuedToday"></span></div>
+        <div class="fieldLine"><b>Head hash:</b> <span class="mono" id="sHead"></span></div>
+
+        <div class="verifyStrip" style="margin-top:14px;">
+          <b>Summary Hash (SHA-256):</b><br/>
+          <span class="mono" id="sHash"></span><br/><br/>
+          <b>Signature (Ed25519, base64):</b><br/>
+          <span class="mono" id="sSig"></span>
+        </div>
+
+        <div class="small" style="margin-top:10px;">
+          Note: This summary is digitally signed by the barangay signing key.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Offline local app — chained ledger + signatures + corrections/revoke + daily summary.
+  </footer>
+
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modalOverlay" id="loginOverlay">
+  <div class="modal">
+    <h2>🔐 Login</h2>
+    <div class="small">Offline local accounts (stored on this device).</div>
+
+    <label>Username</label>
+    <input id="loginUser" placeholder="e.g., admin" autocomplete="username" />
+
+    <label>Password</label>
+    <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+
+    <div class="hint" id="firstAdminHint" style="display:none;margin-top:10px;">
+      First-time setup: login as <b>admin</b>. Your entered password will become the admin password.
+    </div>
+
+    <div class="btns">
+      <button class="ghost" id="loginCancelBtn" type="button">Cancel</button>
+      <button id="loginOkBtn" type="button">Login</button>
+    </div>
+
+    <div class="status" id="loginStatus" style="margin-top:10px;">Ready.</div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modalOverlay" id="passOverlay">
+  <div class="modal">
+    <h2>🔑 Change Password</h2>
+    <div class="small">This changes the password for the currently logged-in account on this device.</div>
+
+    <label>Current Password</label>
+    <input id="curPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+
+    <label>New Password</label>
+    <input id="newPass" type="password" placeholder="Min 6 characters" autocomplete="new-password" />
+
+    <label>Confirm New Password</label>
+    <input id="newPass2" type="password" placeholder="Repeat new password" autocomplete="new-password" />
+
+    <div class="btns">
+      <button class="ghost" id="passCancelBtn" type="button">Cancel</button>
+      <button id="passOkBtn" type="button">Save</button>
+    </div>
+
+    <div class="status" id="passStatus" style="margin-top:10px;">Ready.</div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
