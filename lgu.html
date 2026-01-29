@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Barangay Records (Printable Certificate)</title>
+
+  <!-- QR Code Library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root{
+      --bg1:#e7f3ff;
+      --bg2:#ffffff;
+      --card:#ffffff;
+      --ink:#0f172a;
+      --muted:#475569;
+      --brand:#2563eb;
+      --good:#16a34a;
+      --bad:#dc2626;
+      --line:#e2e8f0;
+      --shadow: 0 12px 30px rgba(2, 6, 23, .12);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--ink);
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      padding:18px;
+    }
+    .wrap{max-width:1100px;margin:0 auto}
+    header{
+      background: radial-gradient(circle at top left, rgba(37,99,235,.15), transparent 60%),
+                  radial-gradient(circle at top right, rgba(6,182,212,.18), transparent 55%),
+                  #fff;
+      border:1px solid var(--line);
+      border-radius: var(--r);
+      padding:18px;
+      box-shadow: var(--shadow);
+    }
+    h1{margin:0 0 6px;font-size:24px}
+    .sub{color:var(--muted);margin:0}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:16px;
+      margin-top:16px;
+    }
+    @media (max-width: 900px){
+      .grid{grid-template-columns:1fr}
+    }
+    .card{
+      background: var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--r);
+      padding:16px;
+      box-shadow: var(--shadow);
+    }
+    .card h2{
+      margin:0 0 10px;
+      font-size:18px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .pill{
+      font-size:12px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      color:var(--muted);
+      background: #f8fafc;
+    }
+    label{
+      font-weight:650;
+      display:block;
+      margin:10px 0 6px;
+      font-size:13px;
+    }
+    input, select, textarea{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius: 12px;
+      font-size:14px;
+      outline:none;
+      background:#fff;
+    }
+    textarea{min-height:80px;resize:vertical}
+    .row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 520px){
+      .row{grid-template-columns:1fr}
+    }
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{
+      border:0;
+      border-radius: 12px;
+      padding:10px 12px;
+      font-weight:700;
+      cursor:pointer;
+      background: var(--brand);
+      color:white;
+    }
+    button.secondary{ background:#0f172a; }
+    button.ghost{
+      background:#f1f5f9;
+      color:#0f172a;
+      border:1px solid var(--line);
+    }
+    button:active{transform: translateY(1px)}
+    .hint{
+      background:#f8fafc;
+      border:1px dashed var(--line);
+      padding:10px 12px;
+      border-radius: 12px;
+      color:var(--muted);
+      font-size:13px;
+      margin-top:10px;
+    }
+    .status{
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background:#f8fafc;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .ok{color:var(--good);font-weight:800}
+    .no{color:var(--bad);font-weight:800}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .small{font-size:12px;color:var(--muted)}
+    table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top:10px;
+      font-size:13px;
+    }
+    th, td{
+      border-bottom: 1px solid var(--line);
+      padding:10px 8px;
+      text-align:left;
+      vertical-align:top;
+    }
+    th{color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+    .tag{
+      display:inline-block;
+      padding:3px 8px;
+      border-radius:999px;
+      font-size:12px;
+      border:1px solid var(--line);
+      background:#f8fafc;
+      color:var(--muted);
+    }
+    .tag.good{border-color: rgba(22,163,74,.25); background: rgba(22,163,74,.08); color: var(--good);}
+    .tag.bad{border-color: rgba(220,38,38,.25); background: rgba(220,38,38,.08); color: var(--bad);}
+
+    /* ---------------------------
+       PRINTABLE CERTIFICATE (A4)
+    ---------------------------- */
+    #printArea{
+      display:none; /* hidden until a certificate is issued */
+      margin-top:16px;
+    }
+
+    .a4{
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 18mm;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .watermark{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:68px;
+      letter-spacing: 6px;
+      transform: rotate(-20deg);
+      color: rgba(15, 23, 42, 0.05);
+      pointer-events:none;
+      user-select:none;
+    }
+
+    .certHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .certLeft h3{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+    }
+    .certLeft .meta{
+      margin-top:6px;
+      color: var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+    .certRight{
+      text-align:right;
+      font-size:12px;
+      color: var(--muted);
+      min-width: 180px;
+    }
+
+    .certTitle{
+      text-align:center;
+      margin: 18px 0 8px;
+      font-size:22px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+
+    .certBody{
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .fieldLine{
+      margin: 10px 0;
+    }
+    .fill{
+      font-weight:800;
+    }
+
+    .certFooter{
+      display:grid;
+      grid-template-columns: 1fr 170px;
+      gap: 14px;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      align-items:end;
+    }
+
+    .signBox{
+      margin-top: 8px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .sig{
+      border-top: 1px solid #0f172a;
+      padding-top: 6px;
+      font-size:12px;
+      color: var(--muted);
+      text-align:center;
+    }
+
+    .qrBox{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      text-align:center;
+    }
+    .qrBox .small{margin-top:6px}
+    #printQR{
+      width:150px;height:150px;
+      margin: 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .verifyStrip{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border:1px dashed var(--line);
+      border-radius: 12px;
+      font-size:12px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    /* Print rules: print only #printArea */
+    @page { size: A4; margin: 12mm; }
+    @media print{
+      body{ background:#fff; padding:0; }
+      .wrap{max-width:none}
+      header, .grid, .card:not(#printArea), footer{ display:none !important; }
+      #printArea{ display:block !important; margin:0 !important; }
+      .a4{
+        box-shadow:none;
+        border:none;
+        border-radius:0;
+        width:auto;
+        min-height:auto;
+        padding: 0; /* page margin handled by @page */
+      }
+      .watermark{ display:none; } /* optional: hide watermark on print */
+    }
+
+    footer{margin:16px 0;color:var(--muted);font-size:12px;text-align:center}
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🏛️ Barangay Records (Sample App)</h1>
+    <p class="sub">Issue documents → hash them → store into a chained ledger → print an A4 certificate with QR verification.</p>
+    <div class="hint">
+      ✅ Works offline after first load (LocalStorage).<br/>
+      🖨️ After issuing a document, scroll down to the A4 certificate preview and click <b>Print Certificate</b>.
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- ISSUE -->
+    <section class="card">
+      <h2>📝 Issue Document <span class="pill">Admin / Staff</span></h2>
+
+      <div class="row">
+        <div>
+          <label>Resident Full Name</label>
+          <input id="name" placeholder="e.g., Juan Dela Cruz" />
+        </div>
+        <div>
+          <label>Document Type</label>
+          <select id="doctype">
+            <option value="Barangay Clearance">Barangay Clearance</option>
+            <option value="Certificate of Residency">Certificate of Residency</option>
+            <option value="Certificate of Indigency">Certificate of Indigency</option>
+            <option value="Business Clearance">Business Clearance</option>
+            <option value="Incident Report">Incident Report</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Purpose / Notes</label>
+      <textarea id="purpose" placeholder="e.g., Employment requirement, scholarship, etc."></textarea>
+
+      <div class="btns">
+        <button id="issueBtn">Issue & Add to Ledger</button>
+        <button class="ghost" id="resetBtn" type="button">Clear Form</button>
+      </div>
+
+      <div class="status" id="issueStatus">Ready.</div>
+    </section>
+
+    <!-- VERIFY + TOOLS -->
+    <section class="card">
+      <h2>✅ Verify Document <span class="pill">Public Verifier</span></h2>
+
+      <label>Paste Verify Code (from QR / certificate)</label>
+      <input id="verifyInput" placeholder="e.g., BRGY|<id>|<hash>" />
+
+      <div class="btns">
+        <button id="verifyBtn">Verify</button>
+        <button class="ghost" id="tamperBtn" type="button">⚠️ Demo: Tamper Last Record</button>
+      </div>
+
+      <div class="status" id="verifyStatus">Paste a code and click Verify.</div>
+
+      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0;"/>
+
+      <h2 style="margin-top:0">📦 Ledger Tools <span class="pill">Backup</span></h2>
+
+      <div class="btns">
+        <button class="secondary" id="exportBtn" type="button">Export Ledger JSON</button>
+        <button class="ghost" id="importBtn" type="button">Import Ledger JSON</button>
+        <button class="ghost" id="clearLedgerBtn" type="button">Clear Ledger</button>
+      </div>
+
+      <input id="filePick" type="file" accept=".json" style="display:none"/>
+
+      <div class="hint">
+        💡 Thesis note: This uses a chained ledger (hash + prevHash). Later you can replace it with Ethereum/Hyperledger.
+      </div>
+    </section>
+
+  </div>
+
+  <!-- LEDGER TABLE -->
+  <section class="card" style="margin-top:16px;">
+    <h2>📚 Ledger Records <span class="pill">Audit View</span></h2>
+    <div class="small">If any record is edited, the chain integrity check will fail.</div>
+
+    <div class="btns" style="margin-top:10px;">
+      <button class="ghost" id="checkChainBtn" type="button">Run Chain Integrity Check</button>
+    </div>
+    <div class="status" id="chainStatus">Ledger loaded.</div>
+
+    <div style="overflow:auto;">
+      <table id="ledgerTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Record ID</th>
+            <th>Name</th>
+            <th>Document</th>
+            <th>Hash</th>
+            <th>Prev Hash</th>
+            <th>Integrity</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PRINTABLE A4 CERTIFICATE -->
+  <section class="card" id="printArea">
+    <h2>🖨️ Printable Certificate (A4) <span class="pill">Preview</span></h2>
+
+    <div class="btns" style="margin-top:10px;">
+      <button id="printBtn" class="secondary" type="button">Print Certificate</button>
+      <button id="hideCertBtn" class="ghost" type="button">Hide Certificate</button>
+    </div>
+
+    <div class="hint">
+      Printing tip: Choose <b>More settings → Paper size: A4</b>. Turn off “Headers and footers” for clean output.
+    </div>
+
+    <div class="a4" id="a4Doc">
+      <div class="watermark">BARANGAY</div>
+
+      <div class="certHeader">
+        <div class="certLeft">
+          <h3>Republic of the Philippines</h3>
+          <div class="meta">
+            Province/City: <span class="fill" id="phCity">Sample City</span><br/>
+            Barangay: <span class="fill" id="phBarangay">Barangay Sample</span><br/>
+            Office of the Punong Barangay
+          </div>
+        </div>
+        <div class="certRight">
+          <div><b>Date Issued:</b> <span id="pIssuedDate"></span></div>
+          <div><b>Record ID:</b> <span class="mono" id="pRecordId"></span></div>
+        </div>
+      </div>
+
+      <div class="certTitle" id="pDocTitle">Barangay Clearance</div>
+
+      <div class="certBody">
+        <p>
+          This is to certify that <span class="fill" id="pName">________________</span>
+          is a bonafide resident of <span class="fill" id="pBarangay2">Barangay Sample</span>.
+        </p>
+
+        <div class="fieldLine">
+          <b>Purpose / Notes:</b>
+          <span class="fill" id="pPurpose">________________</span>
+        </div>
+
+        <p>
+          Issued this <span class="fill" id="pIssuedPretty">__________</span> upon request of the above-named individual,
+          for whatever legal purpose it may serve.
+        </p>
+
+        <div class="verifyStrip">
+          <b>Verification Code (scan QR or copy):</b><br/>
+          <span class="mono" id="pVerifyCode"></span>
+        </div>
+      </div>
+
+      <div class="certFooter">
+        <div>
+          <div class="signBox">
+            <div>
+              <div class="sig">Barangay Secretary (Signature over Printed Name)</div>
+            </div>
+            <div>
+              <div class="sig">Punong Barangay (Signature over Printed Name)</div>
+            </div>
+          </div>
+
+          <div class="small" style="margin-top:10px;">
+            Hash: <span class="mono" id="pHash"></span><br/>
+            Prev Hash: <span class="mono" id="pPrevHash"></span>
+          </div>
+        </div>
+
+        <div class="qrBox">
+          <div id="printQR"></div>
+          <div class="small"><b>Scan to Verify</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Prototype for MSCS thesis — “Print Certificate” prints only the A4 certificate page.
+  </footer>
+
+</div>
+
+<script>
+/* ----------------------------
+  Simple "Blockchain-like" Ledger
+----------------------------- */
+const LS_KEY = "brgy_ledger_v2_print";
+let ledger = loadLedger();
+let lastIssued = null;
+
+function loadLedger(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw){
+      return [{
+        index: 0,
+        id: "GENESIS",
+        name: "SYSTEM",
+        doctype: "GENESIS",
+        purpose: "Initial block",
+        timestamp: new Date().toISOString(),
+        prevHash: "0".repeat(64),
+        hash: "0".repeat(64)
+      }];
+    }
+    return JSON.parse(raw);
+  }catch(e){
+    return [{
+      index: 0,
+      id: "GENESIS",
+      name: "SYSTEM",
+      doctype: "GENESIS",
+      purpose: "Initial block",
+      timestamp: new Date().toISOString(),
+      prevHash: "0".repeat(64),
+      hash: "0".repeat(64)
+    }];
+  }
+}
+function saveLedger(){
+  localStorage.setItem(LS_KEY, JSON.stringify(ledger));
+}
+function uid(){
+  const s = crypto.getRandomValues(new Uint8Array(8));
+  return [...s].map(b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+}
+async function sha256(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function buildRecordString(rec){
+  return [rec.id, rec.name, rec.doctype, rec.purpose, rec.timestamp, rec.prevHash].join("|");
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[m]));
+}
+function shortHash(h){
+  if(!h) return "";
+  return h.slice(0,10) + "…" + h.slice(-8);
+}
+function setIssueStatus(msg, ok=true){
+  const el = document.getElementById("issueStatus");
+  el.innerHTML = ok ? msg : `<span class="no">${msg}</span>`;
+}
+function setVerifyStatus(msg, ok=true){
+  const el = document.getElementById("verifyStatus");
+  el.innerHTML = ok ? msg : `<span class="no">${msg}</span>`;
+}
+function setChainStatus(msg, ok=true){
+  const el = document.getElementById("chainStatus");
+  el.innerHTML = ok ? msg : `<span class="no">${msg}</span>`;
+}
+
+function renderLedger(){
+  const tbody = document.querySelector("#ledgerTable tbody");
+  tbody.innerHTML = "";
+
+  for(let i=0;i<ledger.length;i++){
+    const r = ledger[i];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.index}</td>
+      <td class="mono">${escapeHtml(r.id)}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.doctype)}</td>
+      <td class="mono">${shortHash(r.hash)}</td>
+      <td class="mono">${shortHash(r.prevHash)}</td>
+      <td><span class="tag" data-integrity="${i}">—</span></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function updateIntegrityBadges(results){
+  results.forEach((ok, i)=>{
+    const badge = document.querySelector(`[data-integrity="${i}"]`);
+    if(!badge) return;
+    badge.classList.remove("good","bad");
+    badge.classList.add(ok ? "good" : "bad");
+    badge.textContent = ok ? "OK" : "BROKEN";
+  });
+}
+
+async function chainCheck(){
+  const res = new Array(ledger.length).fill(true);
+  for(let i=1;i<ledger.length;i++){
+    const prev = ledger[i-1];
+    const cur  = ledger[i];
+
+    if(cur.prevHash !== prev.hash){
+      res[i] = false;
+      continue;
+    }
+    const recomputed = await sha256(buildRecordString(cur));
+    if(recomputed !== cur.hash){
+      res[i] = false;
+    }
+  }
+  res[0] = true;
+
+  updateIntegrityBadges(res);
+
+  const broken = res.filter(x=>!x).length;
+  if(broken === 0){
+    setChainStatus(`<span class="ok">✅ Chain OK</span> — All records match their hashes and links.`);
+  }else{
+    setChainStatus(`⚠️ Chain has <b>${broken}</b> broken record(s).`, false);
+  }
+  return res;
+}
+
+/* ----------------------------
+   Printable Certificate helpers
+----------------------------- */
+let printQRObj = null;
+
+function formatPrettyDate(iso){
+  const d = new Date(iso);
+  const opts = { year:"numeric", month:"long", day:"numeric" };
+  return d.toLocaleDateString(undefined, opts);
+}
+function buildVerifyCode(rec){
+  return `BRGY|${rec.id}|${rec.hash}`;
+}
+function renderPrintableCertificate(rec){
+  // Show print area
+  document.getElementById("printArea").style.display = "block";
+  lastIssued = rec;
+
+  // Fill fields
+  document.getElementById("pDocTitle").textContent = rec.doctype;
+  document.getElementById("pName").textContent = rec.name;
+  document.getElementById("pPurpose").textContent = rec.purpose;
+
+  document.getElementById("pIssuedDate").textContent = formatPrettyDate(rec.timestamp);
+  document.getElementById("pIssuedPretty").textContent = formatPrettyDate(rec.timestamp);
+  document.getElementById("pRecordId").textContent = rec.id;
+
+  document.getElementById("pHash").textContent = rec.hash;
+  document.getElementById("pPrevHash").textContent = rec.prevHash;
+
+  // Barangay name placeholders (you can later turn into inputs)
+  document.getElementById("pBarangay2").textContent = document.getElementById("phBarangay").textContent;
+
+  // Verify code
+  const code = buildVerifyCode(rec);
+  document.getElementById("pVerifyCode").textContent = code;
+
+  // QR in print certificate
+  const qrEl = document.getElementById("printQR");
+  qrEl.innerHTML = "";
+  printQRObj = new QRCode(qrEl, { text: code, width: 150, height: 150 });
+}
+
+/* ----------------------------
+   Issue Document
+----------------------------- */
+document.getElementById("issueBtn").addEventListener("click", async ()=>{
+  const name = document.getElementById("name").value.trim();
+  const doctype = document.getElementById("doctype").value;
+  const purpose = document.getElementById("purpose").value.trim();
+
+  if(!name || !purpose){
+    setIssueStatus("Please fill in Name and Purpose/Notes.", false);
+    return;
+  }
+
+  const prev = ledger[ledger.length - 1];
+  const record = {
+    index: ledger.length,
+    id: "BRGY-" + uid(),
+    name,
+    doctype,
+    purpose,
+    timestamp: new Date().toISOString(),
+    prevHash: prev.hash
+  };
+  record.hash = await sha256(buildRecordString(record));
+
+  ledger.push(record);
+  saveLedger();
+
+  setIssueStatus(`<span class="ok">✅ Saved!</span> Document issued and added to ledger.`);
+  renderLedger();
+  await chainCheck();
+
+  // Build printable A4 certificate
+  renderPrintableCertificate(record);
+
+  // auto-scroll to print area (nice UX)
+  document.getElementById("printArea").scrollIntoView({behavior:"smooth", block:"start"});
+});
+
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  document.getElementById("name").value = "";
+  document.getElementById("purpose").value = "";
+  setIssueStatus("Ready.");
+});
+
+/* ----------------------------
+   Verify Document
+----------------------------- */
+document.getElementById("verifyBtn").addEventListener("click", async ()=>{
+  const val = document.getElementById("verifyInput").value.trim();
+  if(!val){
+    setVerifyStatus("Paste a verify code first.", false);
+    return;
+  }
+
+  const parts = val.split("|");
+  if(parts.length !== 3 || parts[0] !== "BRGY"){
+    setVerifyStatus("Invalid code format. Expected: BRGY|ID|HASH", false);
+    return;
+  }
+
+  const id = parts[1];
+  const hash = parts[2];
+
+  const found = ledger.find(r => r.id === id);
+  if(!found){
+    setVerifyStatus("❌ Not found in ledger. This document may be fake or from another ledger.", false);
+    return;
+  }
+
+  const recomputed = await sha256(buildRecordString(found));
+  if(found.hash !== recomputed){
+    setVerifyStatus("❌ Record exists but was tampered (hash mismatch).", false);
+    return;
+  }
+
+  if(found.hash !== hash){
+    setVerifyStatus("❌ Record exists but code hash does not match (wrong QR/code or altered certificate).", false);
+    return;
+  }
+
+  setVerifyStatus(`<span class="ok">✅ VERIFIED</span><br/>
+    Name: <b>${escapeHtml(found.name)}</b><br/>
+    Document: <b>${escapeHtml(found.doctype)}</b><br/>
+    Issued: <span class="mono">${escapeHtml(found.timestamp)}</span>`);
+});
+
+/* ----------------------------
+   Print button
+----------------------------- */
+document.getElementById("printBtn").addEventListener("click", ()=>{
+  if(!lastIssued){
+    alert("Issue a document first to generate a certificate.");
+    return;
+  }
+  window.print();
+});
+
+document.getElementById("hideCertBtn").addEventListener("click", ()=>{
+  document.getElementById("printArea").style.display = "none";
+});
+
+/* ----------------------------
+   Demo Tamper Button
+----------------------------- */
+document.getElementById("tamperBtn").addEventListener("click", ()=>{
+  if(ledger.length <= 1){
+    setVerifyStatus("Nothing to tamper (only genesis).", false);
+    return;
+  }
+  ledger[ledger.length - 1].purpose += " [TAMPERED]";
+  saveLedger();
+  renderLedger();
+  setVerifyStatus("⚠️ Last record tampered for demo. Try Verify / Chain Check.", false);
+});
+
+/* ----------------------------
+   Export / Import / Clear
+----------------------------- */
+document.getElementById("exportBtn").addEventListener("click", ()=>{
+  const data = JSON.stringify(ledger, null, 2);
+  const blob = new Blob([data], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "barangay_ledger.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("importBtn").addEventListener("click", ()=>{
+  document.getElementById("filePick").click();
+});
+
+document.getElementById("filePick").addEventListener("change", (e)=>{
+  const file = e.target.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    try{
+      const obj = JSON.parse(reader.result);
+      if(!Array.isArray(obj) || obj.length < 1) throw new Error("Invalid ledger file.");
+      ledger = obj;
+      saveLedger();
+      renderLedger();
+      await chainCheck();
+      setVerifyStatus(`<span class="ok">✅ Imported ledger.</span>`);
+    }catch(err){
+      setVerifyStatus("Import failed: " + err.message, false);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+document.getElementById("clearLedgerBtn").addEventListener("click", async ()=>{
+  localStorage.removeItem(LS_KEY);
+  ledger = loadLedger();
+  saveLedger();
+  renderLedger();
+  await chainCheck();
+  setVerifyStatus("Ledger cleared. (Genesis restored)");
+  setIssueStatus("Ready.");
+  document.getElementById("printArea").style.display = "none";
+  lastIssued = null;
+});
+
+document.getElementById("checkChainBtn").addEventListener("click", chainCheck);
+
+/* ----------------------------
+  Init
+----------------------------- */
+renderLedger();
+chainCheck();
+</script>
+
+</body>
+</html>
